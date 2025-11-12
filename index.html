@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drovia: Secure File Transfer</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Custom Tailwind Configuration */
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'graphite-black': '#0B0B0D',
+                        'deep-space-blue': '#0E1F3D',
+                        'neon-cyan': '#00E6FF',
+                        'electric-purple': '#7A5CFF',
+                        'white-text': '#F4F4F5',
+                    },
+                    fontFamily: {
+                        heading: ['Orbitron', 'sans-serif'],
+                        body: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon-cyan-sm': '0 0 5px #00E6FF',
+                        'neon-cyan-md': '0 0 15px #00E6FF',
+                        'neon-purple-md': '0 0 15px #7A5CFF',
+                        'glass-glow': '0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 30px #00E6FF, inset 0 0 10px #7A5CFF',
+                    },
+                    keyframes: {
+                        pulseNeon: {
+                            '0%, 100%': { boxShadow: '0 0 10px #00E6FF' },
+                            '50%': { boxShadow: '0 0 25px #00E6FF, 0 0 50px #7A5CFF' },
+                        },
+                        fadeInDown: {
+                            '0%': { opacity: 0, transform: 'translateY(-20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        scanlines: {
+                            '0%': { backgroundPosition: '0 0' },
+                            '100%': { backgroundPosition: '0 100vh' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        }
+                    },
+                    animation: {
+                        pulseNeon: 'pulseNeon 3s infinite ease-in-out',
+                        fadeInDown: 'fadeInDown 0.5s ease-out forwards',
+                    }
+                }
+            }
+        }
+
+        /* Base Body Styling */
+        body {
+            background-color: #0B0B0D; /* graphite-black */
+            background-image: radial-gradient(circle at center, #0e1f3d 1px, transparent 10%), radial-gradient(circle at center, #0e1f3d 1px, transparent 10%);
+            background-size: 20px 20px;
+            font-family: 'Inter', sans-serif;
+            color: #F4F4F5; /* white-text */
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            transition: all 0.5s ease-in-out;
+            overflow: hidden; /* Prevent scrollbars from animation */
+        }
+        
+        /* Scanline Overlay Effect */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: linear-gradient(0deg, rgba(0,0,0,0) 0, rgba(0, 230, 255, 0.05) 50%, rgba(0,0,0,0) 100%);
+            background-repeat: repeat;
+            background-size: 100% 4px;
+            animation: scanlines 10s linear infinite;
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Floating Card Animation */
+        #app {
+            animation: float 6s ease-in-out infinite;
+        }
+
+
+        /* Glassmorphism Card Styling */
+        .glass-card {
+            background-color: rgba(14, 31, 61, 0.5); /* deep-space-blue 50% opacity */
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 230, 255, 0.3);
+            border-radius: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), 0 0 50px rgba(122, 92, 255, 0.2);
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+        }
+
+        .glass-card:hover {
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), 0 0 70px rgba(0, 230, 255, 0.3);
+            transform: scale(1.01);
+        }
+
+        /* Neon Button Styling */
+        .neon-btn {
+            background: linear-gradient(90deg, #00E6FF, #7A5CFF);
+            color: #0B0B0D; /* graphite-black */
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 0.75rem 1.5rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px #00E6FF; /* neon-cyan */
+        }
+
+        .neon-btn:hover {
+            box-shadow: 0 0 20px #00E6FF, 0 0 30px #7A5CFF; /* neon-cyan, electric-purple */
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .neon-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 0 5px #00E6FF; /* neon-cyan */
+        }
+
+        /* Drop Zone Pulse Effect */
+        #drop-zone.drag-over {
+            border-color: #00E6FF; /* neon-cyan */
+            box-shadow: 0 0 15px #00E6FF; /* neon-cyan */
+            background-color: rgba(0, 230, 255, 0.05);
+            animation: pulseNeon 1.5s infinite;
+        }
+        
+        /* Progress Bar Styling */
+        .progress-bar {
+            height: 10px;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: rgba(14, 31, 61, 0.8); /* deep-space-blue */
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: width 0.4s ease;
+            background: linear-gradient(90deg, #00E6FF, #7A5CFF); /* neon-cyan, electric-purple */
+            box-shadow: 0 0 5px #00E6FF, 0 0 15px #7A5CFF; /* neon-cyan, electric-purple */
+        }
+        
+        /* Neon Notification */
+        .neon-notification {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            padding: 1rem 2rem;
+            border-radius: 0 0 10px 10px;
+            animation: fadeInDown 0.5s ease-out forwards;
+            min-width: 300px;
+            text-align: center;
+        }
+        .neon-success {
+            background-color: rgba(122, 92, 255, 0.7); /* Electric Purple */
+            box-shadow: 0 0 20px #7A5CFF;
+        }
+        .neon-error {
+            background-color: rgba(255, 0, 77, 0.7); /* Custom Red/Pink for error */
+            box-shadow: 0 0 20px rgba(255, 0, 77, 1);
+        }
+
+        /* Enhanced Expiration Button Styles */
+        .expiration-label div {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.5rem;
+            background-color: #0E1F3D; /* deep-space-blue */
+            border: 2px solid transparent;
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .expiration-label input:checked + div {
+            border-color: #00E6FF; /* neon-cyan */
+            box-shadow: 0 0 10px #00E6FF;
+            color: #00E6FF;
+            transform: scale(1.05);
+        }
+        .expiration-label:hover div:not(input:checked + div) {
+            background-color: rgba(14, 31, 61, 0.8);
+            border-color: rgba(0, 230, 255, 0.3);
+        }
+
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="font-body">
+
+    <!-- Custom Neon Notification Area -->
+    <div id="neon-notification-area"></div>
+
+    <div id="app" class="w-full max-w-2xl mx-auto my-10">
+
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="font-heading text-5xl font-bold text-white-text mb-2">DROVIA</h1>
+            <p class="text-neon-cyan text-lg tracking-widest uppercase">Secure • Instant • Zero-Knowledge</p>
+        </header>
+
+        <!-- Main Glass Card -->
+        <div id="main-card" class="glass-card p-6 md:p-10">
+            <div id="ui-content">
+                <!-- Content will be injected here by JavaScript based on app state -->
+            </div>
+        </div>
+
+        <!-- Footer / Security Statement -->
+        <footer class="text-center mt-10 text-gray-500 text-sm">
+            <p>End-to-End Encryption (E2EE) powered by WebCrypto AES-256-GCM. Your files never touch our servers unencrypted.</p>
+        </footer>
+
+    </div>
+
+<script>
+    // --- GLOBAL STATE & CONSTANTS ---
+    const UI_CONTENT = document.getElementById('ui-content');
+    const NOTIFICATION_AREA = document.getElementById('neon-notification-area');
+    
+    let appState = {
+        currentView: 'upload', // 'upload', 'progress', 'share', 'downloading'
+        fileName: null,
+        fileId: null,
+        encryptionKey: null,
+        expiresAt: null,
+        message: { text: null, type: null } 
+    };
+
+    // --- NOTIFICATION HANDLERS ---
+    function showMessage(text, type = 'success', duration = 3000) {
+        setAppState({ message: { text, type } });
+        setTimeout(() => clearMessage(), duration);
+    }
+    
+    function clearMessage() {
+        setAppState({ message: { text: null, type: null } });
+    }
+
+    function renderMessage() {
+        if (!appState.message.text) {
+            NOTIFICATION_AREA.innerHTML = '';
+            return;
+        }
+        const { text, type } = appState.message;
+        const baseClasses = "neon-notification text-white-text font-body font-semibold";
+        const typeClasses = type === 'success' ? 'neon-success' : 'neon-error';
+        
+        NOTIFICATION_AREA.innerHTML = `<div class="${baseClasses} ${typeClasses}">${text}</div>`;
+    }
+
+    // --- CRYPTOGRAPHY & UTILITY FUNCTIONS (AES-GCM) ---
+
+    const bufferToBase64 = (buffer) => btoa(String.fromCharCode(...new Uint8Array(buffer))).replace(/\+/g, '-').replace(/\//g, '_');
+    const base64ToBuffer = (base64) => {
+        const str = atob(base64.replace(/-/g, '+').replace(/_/g, '/'));
+        const bytes = new Uint8Array(str.length);
+        for (let i = 0; i < str.length; i++) {
+            bytes[i] = str.charCodeAt(i);
+        }
+        return bytes.buffer;
+    };
+
+    const generateKey = () => window.crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+    const exportKey = async (key) => bufferToBase64(await window.crypto.subtle.exportKey('raw', key));
+    const importKey = (base64Key) => window.crypto.subtle.importKey('raw', base64ToBuffer(base64Key), { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
+
+    async function encryptFile(data, key) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encryptedContent = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data);
+        const encryptedData = new Uint8Array(iv.length + encryptedContent.byteLength);
+        encryptedData.set(iv);
+        encryptedData.set(new Uint8Array(encryptedContent), iv.length);
+        return encryptedData.buffer;
+    }
+
+    async function decryptFile(encryptedData, key) {
+        const iv = encryptedData.slice(0, 12);
+        const data = encryptedData.slice(12);
+        return window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, key, data);
+    }
+
+    // --- STATE MACHINE & RENDERER ---
+    function setAppState(newState) {
+        appState = { ...appState, ...newState };
+        render();
+    }
+
+    function render() {
+        let html = '';
+        switch (appState.currentView) {
+            case 'upload':
+                html = renderUploadView();
+                break;
+            case 'progress':
+                html = renderProgressView();
+                break;
+            case 'share':
+                html = renderShareView();
+                break;
+            case 'downloading':
+                html = renderDownloadingView();
+                break;
+        }
+        UI_CONTENT.innerHTML = html;
+        renderMessage();
+    }
+
+    // --- UI VIEW RENDERERS ---
+    function renderUploadView() {
+        return `
+            <h2 class="font-heading text-3xl font-bold text-center mb-6">Initiate Secure Transfer</h2>
+            <div id="drop-zone" class="flex flex-col items-center justify-center p-12 border-4 border-dashed border-deep-space-blue rounded-xl h-64 transition duration-300 cursor-pointer" ondragover="event.preventDefault(); this.classList.add('drag-over');" ondragleave="this.classList.remove('drag-over');" ondrop="handleDrop(event); this.classList.remove('drag-over');" onclick="document.getElementById('file-input').click()">
+                <svg class="w-16 h-16 text-neon-cyan mb-4" fill="none" stroke="currentColor" viewBox="0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <p class="font-heading text-xl text-white-text">Drag & Drop Your File</p>
+                <p class="text-sm text-gray-400 mt-2">Your file is encrypted client-side before upload.</p>
+                <input type="file" id="file-input" class="hidden" onchange="handleFileSelect(event)">
+            </div>
+             <!-- Expiration Settings -->
+            <div class="mt-8 text-center">
+                <p class="font-heading text-lg text-electric-purple mb-4">Set Link Expiration</p>
+                <div id="expiration-options" class="flex justify-center space-x-2 md:space-x-4 text-sm">
+                    <label class="expiration-label">
+                        <input type="radio" name="expiration" value="300000" class="sr-only" checked>
+                        <div>5 Min</div>
+                    </label>
+                    <label class="expiration-label">
+                        <input type="radio" name="expiration" value="3600000" class="sr-only">
+                        <div>1 Hour</div>
+                    </label>
+                    <label class="expiration-label">
+                        <input type="radio" name="expiration" value="86400000" class="sr-only">
+                        <div>24 Hrs</div>
+                    </label>
+                    <label class="expiration-label">
+                        <input type="radio" name="expiration" value="0" class="sr-only">
+                        <div>Never</div>
+                    </label>
+                </div>
+            </div>
+        `;
+    }
+
+    function renderProgressView() {
+        return `
+            <h2 class="font-heading text-3xl font-bold text-center mb-10 text-white-text">Securing Your File...</h2>
+            <p class="text-center text-lg mb-4 text-gray-300">File: <span class="text-neon-cyan font-semibold">${appState.fileName}</span></p>
+            <div class="flex justify-between font-heading text-sm mb-2">
+                <span class="text-electric-purple">Encryption Status</span>
+                <span id="progress-text" class="text-neon-cyan">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p class="text-center mt-6 text-gray-400">Generating unique key and encrypting on your device...</p>
+        `;
+    }
+
+    function renderShareView() {
+        const basePath = window.location.href.split('#')[0]; 
+        const recipientLink = `${basePath}#download/${appState.fileId}/${appState.encryptionKey}`;
+        
+        let expirationMessage = 'This link will not expire.';
+        if (appState.expiresAt > 0) {
+            const expirationDate = new Date(appState.expiresAt);
+            expirationMessage = `Link will expire on: ${expirationDate.toLocaleString()}`;
+        }
+
+        return `
+            <h2 class="font-heading text-3xl font-bold text-center mb-6 text-electric-purple">Transfer Complete & Sealed</h2>
+            <p class="text-center text-gray-300 mb-8">Share this single secure link with the recipient. It contains everything they need.</p>
+            <div class="p-4 rounded-xl bg-deep-space-blue border border-neon-cyan/50">
+                <p class="text-sm text-gray-400">One-Click Secure Link:</p>
+                <input type="text" value="${recipientLink}" id="share-link" readonly class="w-full bg-transparent font-mono text-sm text-neon-cyan border-none outline-none cursor-copy" onclick="copyToClipboard(this.value, 'LinkCopiedBtn')">
+                <button id="LinkCopiedBtn" class="w-full neon-btn mt-3" onclick="copyToClipboard(document.getElementById('share-link').value, 'LinkCopiedBtn')">Copy Secure Link</button>
+            </div>
+             <div class="mt-4 text-center text-neon-cyan text-sm">
+                 <p><strong>${expirationMessage}</strong></p>
+            </div>
+            <div class="mt-2 text-center text-gray-500 text-xs">
+                 <p><strong>Security Notice:</strong> Anyone with this link can download the file until it expires.</p>
+            </div>
+        `;
+    }
+
+    function renderDownloadingView(error = null) {
+        if (error) {
+            return `
+                <h2 class="font-heading text-3xl font-bold text-center mb-6 text-red-500">Access Denied</h2>
+                <p class="text-center text-lg text-gray-300">${error}</p>
+                <div class="mt-8 text-center">
+                    <button class="neon-btn" onclick="window.location.hash=''; setAppState({currentView: 'upload'})">Back to Home</button>
+                </div>
+            `;
+        }
+         return `
+            <h2 class="font-heading text-3xl font-bold text-center mb-10 text-white-text">Secure Download Initiated</h2>
+            <p class="text-center text-lg mb-4 text-gray-300">File: <span class="text-neon-cyan font-semibold">${appState.fileName}</span></p>
+            <div class="flex justify-between font-heading text-sm mb-2">
+                <span id="download-status-text" class="text-electric-purple">Decrypting...</span>
+                <span id="progress-text" class="text-neon-cyan">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div id="progress-fill" class="progress-fill" style="width: 0%"></div>
+            </div>
+            <p class="text-center mt-6 text-gray-400">Your download will start automatically. Please wait...</p>
+        `;
+    }
+
+    // --- EVENT HANDLERS & FLOWS ---
+    const handleFileSelect = (event) => startTransferFlow(event.target.files[0]);
+    const handleDrop = (event) => {
+        event.preventDefault();
+        const file = event.dataTransfer.items?.[0].getAsFile() ?? event.dataTransfer.files?.[0];
+        startTransferFlow(file);
+    };
+
+    async function startTransferFlow(file) {
+        if (!file) {
+            showMessage("File selection failed. Please try again.", 'error');
+            return;
+        }
+
+        const expirationValue = document.querySelector('input[name="expiration"]:checked').value;
+        const expirationMs = parseInt(expirationValue, 10);
+        const expiresAt = expirationMs > 0 ? Date.now() + expirationMs : 0;
+
+        setAppState({ fileName: file.name, currentView: 'progress' });
+        await simulateProgress(20, 200);
+
+        try {
+            const key = await generateKey();
+            const exportedKey = await exportKey(key);
+            const fileBuffer = await file.arrayBuffer();
+            
+            await simulateProgress(50, 300);
+            const encryptedData = await encryptFile(fileBuffer, key);
+            await simulateProgress(80, 300);
+
+            const fileId = crypto.randomUUID();
+            const storedFile = {
+                encryptedData: bufferToBase64(encryptedData),
+                fileName: file.name,
+                fileType: file.type || 'application/octet-stream',
+                expiresAt: expiresAt
+            };
+
+            localStorage.setItem(fileId, JSON.stringify(storedFile));
+
+            await simulateProgress(100, 200);
+            
+            showMessage("File secured! Share the link.", 'success');
+            setAppState({ currentView: 'share', fileId: fileId, encryptionKey: exportedKey, expiresAt: expiresAt });
+
+        } catch (error) {
+            console.error("Encryption failed:", error);
+            showMessage('Encryption failed. Please check the console.', 'error');
+            setAppState({ currentView: 'upload' });
+        }
+    }
+    
+    async function startAutomaticDownload(fileId, keyString) {
+        if (!keyString || !fileId) {
+            UI_CONTENT.innerHTML = renderDownloadingView("Invalid or incomplete download link.");
+            return;
+        }
+
+        const storedFileJSON = localStorage.getItem(fileId);
+        if (!storedFileJSON) {
+            UI_CONTENT.innerHTML = renderDownloadingView("File not found. The link may have expired or been used.");
+            return;
+        }
+        
+        const storedFile = JSON.parse(storedFileJSON);
+
+        if (storedFile.expiresAt && storedFile.expiresAt > 0 && Date.now() > storedFile.expiresAt) {
+            UI_CONTENT.innerHTML = renderDownloadingView("This link has expired and the file has been deleted.");
+            localStorage.removeItem(fileId); // Self-destruct
+            return;
+        }
+
+        setAppState({ currentView: 'downloading', fileName: storedFile.fileName });
+        await new Promise(resolve => setTimeout(resolve, 0)); 
+        
+        const statusText = document.getElementById('download-status-text');
+
+        try {
+            await simulateProgress(25, 300);
+            const key = await importKey(keyString);
+            const encryptedBuffer = base64ToBuffer(storedFile.encryptedData);
+            
+            if (statusText) statusText.textContent = 'Decrypting on your device...';
+            await simulateProgress(60, 500);
+
+            const decryptedBuffer = await decryptFile(encryptedBuffer, key);
+
+            if (statusText) statusText.textContent = 'Download starting...';
+            await simulateProgress(100, 200);
+
+            const blob = new Blob([decryptedBuffer], { type: storedFile.fileType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = storedFile.fileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('File downloaded successfully!', 'success');
+            setTimeout(() => {
+                window.location.hash = '';
+            }, 3000);
+
+        } catch (error) {
+            console.error("Decryption/Download failed:", error);
+            UI_CONTENT.innerHTML = renderDownloadingView("Decryption failed. The link may be corrupt.");
+        }
+    }
+
+
+    function simulateProgress(target, durationMs) {
+        return new Promise(resolve => {
+            const fill = document.getElementById('progress-fill');
+            const text = document.getElementById('progress-text');
+            if (!fill || !text) return resolve();
+
+            const current = parseFloat(fill.style.width) || 0;
+            const step = (target - current) / (durationMs / 10);
+
+            const interval = setInterval(() => {
+                const currentWidth = parseFloat(fill.style.width);
+                if ((step > 0 && currentWidth >= target) || (step < 0 && currentWidth <= target)) {
+                    clearInterval(interval);
+                    fill.style.width = `${target}%`;
+                    text.textContent = `${Math.round(target)}%`;
+                    resolve();
+                } else {
+                    const newWidth = currentWidth + step;
+                    fill.style.width = `${newWidth}%`;
+                    text.textContent = `${Math.round(newWidth)}%`;
+                }
+            }, 10);
+        });
+    }
+    
+    function copyToClipboard(textToCopy, buttonId) {
+        const btn = document.getElementById(buttonId);
+        if (!textToCopy || !btn) return;
+
+        navigator.clipboard.writeText(textToCopy).then(() => {
+            const originalText = btn.textContent;
+            btn.textContent = 'Copied!';
+            showMessage('Copied to clipboard.', 'success', 2000);
+            setTimeout(() => { btn.textContent = originalText; }, 2000);
+        }).catch(err => {
+            showMessage('Failed to copy.', 'error');
+            console.error('Copy failed', err);
+        });
+    }
+
+    function handleHashChange() {
+        const hash = window.location.hash;
+        if (hash.startsWith('#download/')) {
+            const [, fileId, keyString] = hash.substring(1).split('/');
+            if (fileId && keyString) {
+                setTimeout(() => startAutomaticDownload(fileId, keyString), 50);
+            }
+        } else {
+            setAppState({ currentView: 'upload', fileName: null, fileId: null, encryptionKey: null, expiresAt: null });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (!window.crypto || !window.crypto.subtle) {
+            UI_CONTENT.innerHTML = `<div class="text-center p-10 bg-red-800/30 rounded-lg"><h2 class="font-heading text-red-400 text-2xl">ERROR</h2><p class="mt-4">Your browser does not support the WebCrypto API required for secure client-side encryption.</p></div>`;
+            return;
+        }
+        window.addEventListener('hashchange', handleHashChange, false);
+        handleHashChange(); // Check hash on initial load
+    });
+
+</script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
